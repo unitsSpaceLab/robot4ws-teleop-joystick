@@ -1,10 +1,12 @@
 #ifndef TELEOP_JOY_NODE_H
 #define TELEOP_JOY_NODE_H
+
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <geometry_msgs/Twist.h>
 #include <robot4ws_msgs/kinematic_mode.h>
 #include <robot4ws_msgs/Sound.h>
+#include <robot4ws_msgs/enable_logiteck_joystick.h>
 #include <vector>
 
 
@@ -46,6 +48,7 @@ class Robot4WSTeleop
 
         bool checkCommandedDriveMode(std::vector<int> buttons);
         void callService(int button, std::string mode);
+        bool enableJoystickControl(robot4ws_msgs::enable_logiteck_joystick::Request &req, robot4ws_msgs::enable_logiteck_joystick::Response &resp);
 
         ros::NodeHandle _nh; //Ros Node
 
@@ -55,6 +58,7 @@ class Robot4WSTeleop
         ros::Publisher _mode_change_sound_publisher; //ROS Publisher
 
         ros::ServiceClient _client_mode_change; //ROS Service Client for mode change
+        ros::ServiceServer _server_service_provider; //ROS Service Provider
 
 
 
@@ -69,6 +73,7 @@ class Robot4WSTeleop
 
 
         bool is_moving = false;
+        bool enabled = true;
 
 
 
@@ -79,6 +84,7 @@ class Robot4WSTeleop
         double _controller_timeout;
         double _cmd_publish_rate;
         double _sound_publish_rate;
+        double _print_warning_rate;
 
 
         //Variables

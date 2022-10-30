@@ -1,3 +1,5 @@
 <launch>
-	<node/>
+	<node name="robot4ws_logiteck_controller" pkg="robot4ws_teleop_joystick" node="robot4ws_teleop_joystick">
+		<rosparam command="load" filename="$(find robot4ws_teleop_joystick)/config/params.yaml"/>
+	</node>
 </launch>

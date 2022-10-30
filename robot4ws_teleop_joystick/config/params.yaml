@@ -1,0 +1,7 @@
+scale_x_vel: 0.2
+scale_y_vel: 0.2
+scale_omega_vel: 0.5
+controller_timeout: 2.0
+cmd_publish_rate: 10.0
+sound_publish_rate: 0.2
+warning_print_rate: 0.2

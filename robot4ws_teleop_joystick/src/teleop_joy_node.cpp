@@ -6,31 +6,39 @@ Robot4WSTeleop::Robot4WSTeleop()
 {
     ROS_INFO("Starting Robot4WS joystick teleoperation tranform node...");
 
-    _nh.param("scale_x_vel", this -> _linear_x_vel_scale_factor, 0.2);
-    _nh.param("scale_y_vel", this -> _linear_x_vel_scale_factor, 0.2);
-    _nh.param("scale_omega_vel", this -> _angular_z_vel_scale_factor, 0.5);
-    _nh.param("controller_timeout", this -> _controller_timeout, 2.0);
-    _nh.param("cmd_publish_rate", this -> _cmd_publish_rate, 10.0);
-    _nh.param("sound_publish_rate", this -> _sound_publish_rate, 0.2);
+    this -> _nh.param("scale_x_vel", this -> _linear_x_vel_scale_factor, 0.2);
+    this -> _nh.param("scale_y_vel", this -> _linear_x_vel_scale_factor, 0.2);
+    this -> _nh.param("scale_omega_vel", this -> _angular_z_vel_scale_factor, 0.5);
+    this -> _nh.param("controller_timeout", this -> _controller_timeout, 2.0);
+    this -> _nh.param("cmd_publish_rate", this -> _cmd_publish_rate, 10.0);
+    this -> _nh.param("sound_publish_rate", this -> _sound_publish_rate, 0.2); //Once evenry 5 seconds
+    this -> _nh.param("warning_print_rate", this -> _print_warning_rate, 0.2); //Once every 5 seconds
 
 
     //Initialize command vel (cmd_vel) publisher
-    _joystick_command_publisheer = _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+    _joystick_command_publisheer = this -> _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
     //Initialize Joystick subscriber to topic /joy
-    _joystick_subscriber = _nh.subscribe<sensor_msgs::Joy>("/joy", 10, &Robot4WSTeleop::joystickSubscriberCallback, this);
+    _joystick_subscriber = this -> _nh.subscribe<sensor_msgs::Joy>("/joy", 10, &Robot4WSTeleop::joystickSubscriberCallback, this);
 
     //Initialize sound publisher
-    _mode_change_sound_publisher = _nh.advertise<robot4ws_msgs::Sound>("/sound",1);
+    _mode_change_sound_publisher = this -> _nh.advertise<robot4ws_msgs::Sound>("/sound",1);
 
 
     //Initialize service client
     _client_mode_change = _nh.serviceClient<robot4ws_msgs::kinematic_mode>("kinematic_mode");
+    
+    //Initialize service provideer
+    _server_service_provider = this -> _nh.advertiseService("enable_logiteck_controller", &Robot4WSTeleop::enableJoystickControl, this);
 
 
 
-
+    //Initialize timers
     this -> _node_initial_time = ros::Time::now();
+    this -> _last_joy_time = ros::Time::now();
+
+
+    //Reset speed at initialization
     this -> resetSpeeds(true);
 
 
@@ -41,7 +49,22 @@ Robot4WSTeleop::Robot4WSTeleop()
 
 Robot4WSTeleop::~Robot4WSTeleop()
 {
+    //Class destructor
+}
 
+bool Robot4WSTeleop::enableJoystickControl(robot4ws_msgs::enable_logiteck_joystick::Request &req, robot4ws_msgs::enable_logiteck_joystick::Response &resp)
+{
+    this -> enabled = (bool) req.enable_controller;
+    resp.success = true;
+    if ((bool) req.enable_controller)
+    {
+        ROS_INFO("Requested joystick controlled state [active].");
+    }
+    else
+    {
+        ROS_INFO("Requested joystick controlled state [deactivate].");
+    }
+    return true;
 }
 
 
@@ -66,19 +89,38 @@ void Robot4WSTeleop::joystickSubscriberCallback(const sensor_msgs::Joy::ConstPtr
 
     if (is_dead_button_pressed)
     {
-        //DO-SOMETHING
+        //...
+        this -> is_moving = true;
         this -> dot_x = this -> _linear_x_vel_scale_factor * joy -> axes[LINEAR_X_AXIS];
         this -> dot_y = this -> _linear_y_vel_scale_factor * joy -> axes[LINEAR_Y_AXIS];
         this -> dot_theta = this -> _angular_z_vel_scale_factor * joy -> axes[ANGULAR_Z_AXIS];
 
         std::vector<int> buttons_in = joy-> buttons;
-        this ->checkCommandedDriveMode(buttons_in);
+        this -> checkCommandedDriveMode(buttons_in);
+        this -> _last_joy_time = ros::Time::now();
     }
     else
     {
+        this -> is_moving = false;
         this -> resetSpeeds(false);
-
     }
+
+
+    //Check if the controller is in time-out
+    if (ros::Time::now().toSec() - this -> _last_joy_time.toSec() >= this -> _controller_timeout)
+    {
+        static double last_message_time_printed = 0;
+
+        if (ros::Time::now().toSec() - last_message_time_printed >= 1/this -> _print_warning_rate)
+        {
+            ROS_WARN("Controller timeout... Resetting motors.");
+            last_message_time_printed = ros::Time::now().toSec();
+        }
+
+        //Reset the speeds
+        this -> resetSpeeds(false);
+    }
+
 
 };
 
@@ -167,9 +209,9 @@ void Robot4WSTeleop::callService(int button, std::string mode)
 
 void Robot4WSTeleop::run(void)
 {
-    _node_initial_time = ros::Time::now();
-    _last_cmd_sent_time = ros::Time::now();
-    _last_sound_cmd_sent_time = ros::Time::now();
+    this -> _node_initial_time = ros::Time::now();
+    this -> _last_cmd_sent_time = ros::Time::now();
+    this -> _last_sound_cmd_sent_time = ros::Time::now();
 
     while (true)
     {
@@ -182,17 +224,17 @@ void Robot4WSTeleop::run(void)
             cmd_vel_msg.linear.x = this -> dot_x;
             cmd_vel_msg.linear.y = this -> dot_y;
             cmd_vel_msg.angular.z = this -> dot_theta;
-            _joystick_command_publisheer.publish(cmd_vel_msg);
-            _last_cmd_sent_time = ros::Time::now();
+            this -> _joystick_command_publisheer.publish(cmd_vel_msg);
+            this -> _last_cmd_sent_time = ros::Time::now();
 
         }
 
-        if ((ros::Time::now().toSec() - _last_sound_cmd_sent_time.toSec() >= 1/this -> _sound_publish_rate))
+        if ((ros::Time::now().toSec() - _last_sound_cmd_sent_time.toSec() >= 1/this -> _sound_publish_rate) && this -> is_moving)
         {
             robot4ws_msgs::Sound sound_msg;
             sound_msg.value = 1;
-            _mode_change_sound_publisher.publish(sound_msg);
-            _last_sound_cmd_sent_time = ros::Time::now();
+            this -> _mode_change_sound_publisher.publish(sound_msg);
+            this -> _last_sound_cmd_sent_time = ros::Time::now();
         }
     }
     
