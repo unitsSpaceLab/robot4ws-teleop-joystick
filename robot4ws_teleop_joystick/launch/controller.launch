@@ -1,5 +1,10 @@
 <launch>
-	<node name="robot4ws_logiteck_controller" pkg="robot4ws_teleop_joystick" node="robot4ws_teleop_joystick">
-		<rosparam command="load" filename="$(find robot4ws_teleop_joystick)/config/params.yaml"/>
+	<node name="robot4ws_logiteck_controller" pkg="robot4ws_teleop_joystick" type="robot4ws_teleop_logi_controller_node" output="screen">
+		<rosparam command="load" file="$(find robot4ws_teleop_joystick)/config/params.yaml"/>
+	</node>
+
+
+	<node pkg="joy" type="joy_node" name="logiteck_joystick_node" output="screen">
+		<param name="dev" value="/dev/input/js0" type="string"/>
 	</node>
 </launch>

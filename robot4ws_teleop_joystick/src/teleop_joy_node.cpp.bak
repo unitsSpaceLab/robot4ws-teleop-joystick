@@ -15,9 +15,6 @@ Robot4WSTeleop::Robot4WSTeleop()
     this -> _nh.param("warning_print_rate", this -> _print_warning_rate, 0.2); //Once every 5 seconds
 
 
-    //Initialize button mapping
-    this -> initializeButtonMapping();
-
     //Initialize command vel (cmd_vel) publisher
     _joystick_command_publisheer = this -> _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
@@ -45,59 +42,12 @@ Robot4WSTeleop::Robot4WSTeleop()
 
     ROS_INFO("Robot4WS joystick teleoperation tranform node initialized!");
 
-    this -> printSummary();
-
 
 };
-
 
 Robot4WSTeleop::~Robot4WSTeleop()
 {
 
-}
-
-
-void Robot4WSTeleop::printSummary(void)
-{
-    std::cerr << "==============================================================================================================\n";
-    std::cerr << "\t\t\t\t\tLOGITECK CONTROLLER SUMMARY\n";
-    std::cerr << "==============================================================================================================\n";
-
-
-    for(std::map<int, std::string>::iterator it = this -> _button_mapping.begin(); it != this -> _button_mapping.end(); ++it )
-    {
-        int k = it -> first;
-        std::string v_1 = it -> second;
-        std::string v_2 = this -> _button_mapping_human[k];
-        std::cerr << "+ Button number [" << k << "],\t Button label ['" << v_2 <<"'],\t Description [" << v_1 << "]\n";
-    }
-    std::cerr << "==============================================================================================================\n";
-
-
-}
-
-void Robot4WSTeleop::initializeButtonMapping(void)
-{
-    this -> _button_mapping = {{SYMM_ACKERMANN_BUTTON, "Drive mode: Symmetric Ackerman"},
-                                {CAR_LIKE_BUTTON, "Drive mode: Car like Ackermann"},
-                                {OUTER_ACKERMANN, "Drive mode: Outer Ackermann"},
-                                {INNER_ACKERMANN, "Drive mode: Inner Ackermann"},
-                                {GENERAL_ACKERMANN, "Drive mode: General Ackermann"},
-                                {PARALLEL_DRIVE, "Drive mode: Parallel drive (Ackermann)"},
-                                {LATERAL_DRIVE, "Drive mode: Lateral drive"},
-                                {DEADMAN_BUTTON, "Deadman Button (Press to move robot)"}};
-
-
-    this -> _button_mapping_human = {
-        {SYMM_ACKERMANN_BUTTON, "X BUTTON"},
-        {CAR_LIKE_BUTTON, "A BUTTON"},
-        {OUTER_ACKERMANN, "B BUTTON"},
-        {INNER_ACKERMANN, "Y BUTTON"},
-        {GENERAL_ACKERMANN, "LT BUTTON"},
-        {PARALLEL_DRIVE, "RT BUTTON"},
-        {LATERAL_DRIVE, "LB BUTTON"},
-        {DEADMAN_BUTTON, "RB BUTTON"}
-    };
 }
 
 bool Robot4WSTeleop::enableJoystickControl(robot4ws_msgs::enable_logiteck_joystick::Request &req, robot4ws_msgs::enable_logiteck_joystick::Response &resp)
@@ -261,10 +211,10 @@ void Robot4WSTeleop::run(void)
     this -> _last_cmd_sent_time = ros::Time::now();
     this -> _last_sound_cmd_sent_time = ros::Time::now();
 
-    ros::Duration time_to_sleep = ros::Duration(0,1000);
-    
-    while (ros::ok())
+    while (true)
     {
+        /* code */
+
         //Publish commands
         if ((ros::Time::now().toSec() - _last_cmd_sent_time.toSec() >= 1/this -> _cmd_publish_rate))
         {
@@ -284,9 +234,8 @@ void Robot4WSTeleop::run(void)
             this -> _mode_change_sound_publisher.publish(sound_msg);
             this -> _last_sound_cmd_sent_time = ros::Time::now();
         }
-        time_to_sleep.sleep();
-        ros::spinOnce();
     }
+	ros::Time::sleep(0.02);
     
 }
 
@@ -301,7 +250,7 @@ int main(int argc,char* argv[])
     Robot4WSTeleop teleop_node;
 
     teleop_node.run();
-    //ros::spin();
+    ros::spin();
     return 0;
 }
 
