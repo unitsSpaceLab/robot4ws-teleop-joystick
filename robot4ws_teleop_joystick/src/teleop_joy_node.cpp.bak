@@ -7,16 +7,13 @@ Robot4WSTeleop::Robot4WSTeleop()
     ROS_INFO("Starting Robot4WS joystick teleoperation tranform node...");
 
     this -> _nh.param("scale_x_vel", this -> _linear_x_vel_scale_factor, 0.2);
-    this -> _nh.param("scale_y_vel", this -> _linear_y_vel_scale_factor, 0.2);
+    this -> _nh.param("scale_y_vel", this -> _linear_x_vel_scale_factor, 0.2);
     this -> _nh.param("scale_omega_vel", this -> _angular_z_vel_scale_factor, 0.5);
     this -> _nh.param("controller_timeout", this -> _controller_timeout, 2.0);
     this -> _nh.param("cmd_publish_rate", this -> _cmd_publish_rate, 10.0);
     this -> _nh.param("sound_publish_rate", this -> _sound_publish_rate, 0.2); //Once evenry 5 seconds
     this -> _nh.param("warning_print_rate", this -> _print_warning_rate, 0.2); //Once every 5 seconds
 
-
-    //Initialize button mapping
-    this -> initializeButtonMapping();
 
     //Initialize command vel (cmd_vel) publisher
     _joystick_command_publisheer = this -> _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -37,7 +34,6 @@ Robot4WSTeleop::Robot4WSTeleop()
 
     this -> _node_initial_time = ros::Time::now();
     this -> _last_joy_time = ros::Time::now();
-    this -> _last_mode_changed = ros::Time::now();
 
 
 
@@ -46,59 +42,12 @@ Robot4WSTeleop::Robot4WSTeleop()
 
     ROS_INFO("Robot4WS joystick teleoperation tranform node initialized!");
 
-    this -> printSummary();
-
 
 };
-
 
 Robot4WSTeleop::~Robot4WSTeleop()
 {
 
-}
-
-
-void Robot4WSTeleop::printSummary(void)
-{
-    std::cerr << "==============================================================================================================\n";
-    std::cerr << "\t\t\t\t\tLOGITECK CONTROLLER SUMMARY\n";
-    std::cerr << "==============================================================================================================\n";
-
-
-    for(std::map<int, std::string>::iterator it = this -> _button_mapping.begin(); it != this -> _button_mapping.end(); ++it )
-    {
-        int k = it -> first;
-        std::string v_1 = it -> second;
-        std::string v_2 = this -> _button_mapping_human[k];
-        std::cerr << "+ Button number [" << k << "],\t Button label ['" << v_2 <<"'],\t Description [" << v_1 << "]\n";
-    }
-    std::cerr << "==============================================================================================================\n";
-
-
-}
-
-void Robot4WSTeleop::initializeButtonMapping(void)
-{
-    this -> _button_mapping = {{SYMM_ACKERMANN_BUTTON, "Drive mode: Symmetric Ackerman"},
-                                {CAR_LIKE_BUTTON, "Drive mode: Car like Ackermann"},
-                                {OUTER_ACKERMANN, "Drive mode: Outer Ackermann"},
-                                {INNER_ACKERMANN, "Drive mode: Inner Ackermann"},
-                                {GENERAL_ACKERMANN, "Drive mode: General Ackermann"},
-                                {PARALLEL_DRIVE, "Drive mode: Parallel drive (Ackermann)"},
-                                {LATERAL_DRIVE, "Drive mode: Lateral drive"},
-                                {DEADMAN_BUTTON, "Deadman Button (Press to move robot)"}};
-
-
-    this -> _button_mapping_human = {
-        {SYMM_ACKERMANN_BUTTON, "X BUTTON"},
-        {CAR_LIKE_BUTTON, "A BUTTON"},
-        {OUTER_ACKERMANN, "B BUTTON"},
-        {INNER_ACKERMANN, "Y BUTTON"},
-        {GENERAL_ACKERMANN, "LT BUTTON"},
-        {PARALLEL_DRIVE, "RT BUTTON"},
-        {LATERAL_DRIVE, "LB BUTTON"},
-        {DEADMAN_BUTTON, "RB BUTTON"}
-    };
 }
 
 bool Robot4WSTeleop::enableJoystickControl(robot4ws_msgs::enable_logiteck_joystick::Request &req, robot4ws_msgs::enable_logiteck_joystick::Response &resp)
@@ -144,14 +93,6 @@ void Robot4WSTeleop::joystickSubscriberCallback(const sensor_msgs::Joy::ConstPtr
         this -> dot_y = this -> _linear_y_vel_scale_factor * joy -> axes[LINEAR_Y_AXIS];
         this -> dot_theta = this -> _angular_z_vel_scale_factor * joy -> axes[ANGULAR_Z_AXIS];
 
-        if (this -> debug)
-        {
-            std::cerr << "Vel x:\t" << this -> dot_x << "\n";
-            std::cerr << "Vel y:\t" << this -> dot_y << "\n";
-            std::cerr << "Vel z:\t" << this -> dot_theta << "\n";
-
-        }
-
         std::vector<int> buttons_in = joy-> buttons;
         this -> checkCommandedDriveMode(buttons_in);
         this -> _last_joy_time = ros::Time::now();
@@ -164,21 +105,18 @@ void Robot4WSTeleop::joystickSubscriberCallback(const sensor_msgs::Joy::ConstPtr
 
 
     //Check if the controller is in time-out
-    if (this -> exclude_timeout == false)
+    if (ros::Time::now().toSec() - this -> _last_joy_time.toSec() >= this -> _controller_timeout)
     {
-        if (ros::Time::now().toSec() - this -> _last_joy_time.toSec() >= this -> _controller_timeout)
+        static double last_message_time_printed = 0;
+
+        if (ros::Time::now().toSec() - last_message_time_printed >= 1/this -> _print_warning_rate)
         {
-            static double last_message_time_printed = 0;
-
-            if (ros::Time::now().toSec() - last_message_time_printed >= 1/this -> _print_warning_rate)
-            {
-                ROS_WARN("Controller timeout... Resetting motors.");
-                last_message_time_printed = ros::Time::now().toSec();
-            }
-
-            //Reset the speeds
-            this -> resetSpeeds(false);
+            ROS_WARN("Controller timeout... Resetting motors.");
+            last_message_time_printed = ros::Time::now().toSec();
         }
+
+        //Reset the speeds
+        this -> resetSpeeds(false);
     }
 
 
@@ -188,11 +126,6 @@ void Robot4WSTeleop::joystickSubscriberCallback(const sensor_msgs::Joy::ConstPtr
 bool Robot4WSTeleop::checkCommandedDriveMode(std::vector<int> buttons)
 {
     std::string mode;
-
-    if (ros::Time::now().toSec() - this -> _last_mode_changed.toSec() < 5)
-    {
-        return false;
-    }
 
     if ((bool) buttons[SYMM_ACKERMANN_BUTTON])
     {
@@ -259,24 +192,15 @@ void Robot4WSTeleop::callService(int button, std::string mode)
     robot4ws_msgs::kinematic_mode srv;
     srv.request.requested_kinematic_mode = mode;
     const char *c_mode = mode.c_str();
-
-    if (this -> debug)
-    {
-        ROS_INFO("Entering service call function");
-    }
-
     this -> resetSpeeds(true);
-
-
-    this -> _last_mode_changed = ros::Time::now();
 
     if (_client_mode_change.call(srv))
     {
-        ROS_INFO("Changed Driving mode with button [%d - (%s)]", button, c_mode);
+        ROS_INFO("Changed Driving mode with button [%d - (%s)]", SYMM_ACKERMANN_BUTTON, c_mode);
     }
     else
     {
-        ROS_ERROR("Failed to change driving mode with button [%d - (%s)]", button, c_mode);
+        ROS_ERROR("Failed to change driving mode with button [%d - (%s)]", SYMM_ACKERMANN_BUTTON, c_mode);
     }
 
 }
@@ -287,10 +211,10 @@ void Robot4WSTeleop::run(void)
     this -> _last_cmd_sent_time = ros::Time::now();
     this -> _last_sound_cmd_sent_time = ros::Time::now();
 
-    ros::Duration time_to_sleep = ros::Duration(0,1000);
-    
-    while (ros::ok())
+    while (true)
     {
+        /* code */
+
         //Publish commands
         if ((ros::Time::now().toSec() - _last_cmd_sent_time.toSec() >= 1/this -> _cmd_publish_rate))
         {
@@ -300,29 +224,18 @@ void Robot4WSTeleop::run(void)
             cmd_vel_msg.angular.z = this -> dot_theta;
             this -> _joystick_command_publisheer.publish(cmd_vel_msg);
             this -> _last_cmd_sent_time = ros::Time::now();
-            if (this -> debug_on_publishing)
-            {
-                ROS_INFO("PUBLISHING VEL");
-
-            }
 
         }
 
         if ((ros::Time::now().toSec() - _last_sound_cmd_sent_time.toSec() >= 1/this -> _sound_publish_rate) && this -> is_moving)
         {
-            if (this -> debug_on_publishing)
-            {
-                ROS_INFO("PUBLISHING SOUND");
-            }
-
             robot4ws_msgs::Sound sound_msg;
             sound_msg.value = 1;
             this -> _mode_change_sound_publisher.publish(sound_msg);
             this -> _last_sound_cmd_sent_time = ros::Time::now();
         }
-        time_to_sleep.sleep();
-        ros::spinOnce();
     }
+	ros::Time::sleep(0.02);
     
 }
 
@@ -337,7 +250,7 @@ int main(int argc,char* argv[])
     Robot4WSTeleop teleop_node;
 
     teleop_node.run();
-    //ros::spin();
+    ros::spin();
     return 0;
 }
 

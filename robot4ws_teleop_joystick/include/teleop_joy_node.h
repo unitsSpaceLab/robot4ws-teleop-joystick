@@ -8,7 +8,7 @@
 #include <robot4ws_msgs/Sound.h>
 #include <robot4ws_msgs/enable_logiteck_joystick.h>
 #include <vector>
-
+#include <map>
 
 #define LINEAR_Y_AXIS 0
 #define LINEAR_X_AXIS 1
@@ -50,6 +50,8 @@ class Robot4WSTeleop
         void callService(int button, std::string mode);
         bool enableJoystickControl(robot4ws_msgs::enable_logiteck_joystick::Request &req, robot4ws_msgs::enable_logiteck_joystick::Response &resp);
 
+
+        void initializeButtonMapping(void);
         ros::NodeHandle _nh; //Ros Node
 
         ros::Subscriber _joystick_subscriber; //Subscriber to joy node
@@ -61,19 +63,21 @@ class Robot4WSTeleop
         ros::ServiceServer _server_service_provider; //ROS Service Provider
 
 
-
-
-
         geometry_msgs::Twist _cmd_vel_msg;
 
         ros::Time _last_joy_time;
         ros::Time _last_sound_cmd_sent_time;
         ros::Time _last_cmd_sent_time;
         ros::Time _node_initial_time;
+        ros::Time _last_mode_changed;
 
 
         bool is_moving = false;
         bool enabled = true;
+
+        bool debug = false;
+        bool debug_on_publishing = false;
+        bool exclude_timeout = true;
 
 
 
@@ -91,6 +95,11 @@ class Robot4WSTeleop
         double dot_x;
         double dot_y;
         double dot_theta;
+
+
+        //Buttons Mapping initialization (just for printing purpouse)
+        std::map<int, std::string> _button_mapping;
+        std::map<int, std::string> _button_mapping_human;
 
 
 
