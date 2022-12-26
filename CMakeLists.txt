@@ -9,6 +9,7 @@ add_compile_options(-std=c++11)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  sensor_msgs
   roscpp
   rospy
   std_msgs
@@ -151,6 +152,8 @@ add_executable(robot4ws_teleop_logi_controller_node src/teleop_joy_node.cpp)
 target_link_libraries(robot4ws_teleop_logi_controller_node
    ${catkin_LIBRARIES}
  )
+
+install (TARGETS robot4ws_teleop_logi_controller_node RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 #############
 ## Install ##

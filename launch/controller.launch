@@ -3,8 +3,8 @@
 		<rosparam command="load" file="$(find robot4ws_teleop_joystick)/config/params.yaml"/>
 	</node>
 
-
 	<node pkg="joy" type="joy_node" name="logiteck_joystick_node" output="screen">
 		<param name="dev" value="/dev/input/js0" type="string"/>
+		<param name="deadzone" value="0.01" type="double"/>s
 	</node>
 </launch>

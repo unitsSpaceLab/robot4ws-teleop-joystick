@@ -308,7 +308,7 @@ void Robot4WSTeleop::run(void)
 
         }
 
-        if ((ros::Time::now().toSec() - _last_sound_cmd_sent_time.toSec() >= 1/this -> _sound_publish_rate) && this -> is_moving)
+        /*if ((ros::Time::now().toSec() - _last_sound_cmd_sent_time.toSec() >= 1/this -> _sound_publish_rate) && this -> is_moving)
         {
             if (this -> debug_on_publishing)
             {
@@ -319,7 +319,7 @@ void Robot4WSTeleop::run(void)
             sound_msg.value = 1;
             this -> _mode_change_sound_publisher.publish(sound_msg);
             this -> _last_sound_cmd_sent_time = ros::Time::now();
-        }
+        }*/
         time_to_sleep.sleep();
         ros::spinOnce();
     }
