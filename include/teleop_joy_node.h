@@ -1,3 +1,9 @@
+/**
+ * @author Matteo Caruso
+ * @email matteo.caruso@phd.units.it
+ * @email matteo.caruso1993@gmail.com
+**/
+
 #ifndef TELEOP_JOY_NODE_H
 #define TELEOP_JOY_NODE_H
 
