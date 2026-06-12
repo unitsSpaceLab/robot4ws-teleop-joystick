@@ -12,13 +12,15 @@ Robot4WSTeleop::Robot4WSTeleop()
 {
     ROS_INFO("Starting Robot4WS joystick teleoperation tranform node...");
 
-    this -> _nh.param("scale_x_vel", this -> _linear_x_vel_scale_factor, 0.2);
-    this -> _nh.param("scale_y_vel", this -> _linear_y_vel_scale_factor, 0.2);
-    this -> _nh.param("scale_omega_vel", this -> _angular_z_vel_scale_factor, 0.5);
-    this -> _nh.param("controller_timeout", this -> _controller_timeout, 2.0);
-    this -> _nh.param("cmd_publish_rate", this -> _cmd_publish_rate, 10.0);
-    this -> _nh.param("sound_publish_rate", this -> _sound_publish_rate, 0.2); //Once evenry 5 seconds
-    this -> _nh.param("warning_print_rate", this -> _print_warning_rate, 0.2); //Once every 5 seconds
+    std::string node_name = ros::this_node::getName();
+
+    this -> _nh.param(node_name + "/scale_x_vel", this -> _linear_x_vel_scale_factor, 0.2);
+    this -> _nh.param(node_name + "/scale_y_vel", this -> _linear_y_vel_scale_factor, 0.2);
+    this -> _nh.param(node_name + "/scale_omega_vel", this -> _angular_z_vel_scale_factor, 0.5);
+    this -> _nh.param(node_name + "/controller_timeout", this -> _controller_timeout, 2.0);
+    this -> _nh.param(node_name + "/cmd_publish_rate", this -> _cmd_publish_rate, 10.0);
+    this -> _nh.param(node_name + "/sound_publish_rate", this -> _sound_publish_rate, 0.2); //Once evenry 5 seconds
+    this -> _nh.param(node_name + "/warning_print_rate", this -> _print_warning_rate, 0.2); //Once every 5 seconds
 
 
     //Initialize button mapping
@@ -294,7 +296,7 @@ void Robot4WSTeleop::run(void)
     this -> _last_sound_cmd_sent_time = ros::Time::now();
 
     ros::Duration time_to_sleep = ros::Duration(0,1000);
-    
+
     while (ros::ok())
     {
         //Publish commands
@@ -309,7 +311,6 @@ void Robot4WSTeleop::run(void)
             if (this -> debug_on_publishing)
             {
                 ROS_INFO("PUBLISHING VEL");
-
             }
 
         }
@@ -329,7 +330,7 @@ void Robot4WSTeleop::run(void)
         time_to_sleep.sleep();
         ros::spinOnce();
     }
-    
+
 }
 
 
