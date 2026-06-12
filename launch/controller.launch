@@ -4,9 +4,12 @@
     @email matteo.caruso1993@gmail.com
  -->
 <launch>
+	<!-- 'workspace_pub:=/' to launch with no workspace (for real Archimede) -->
+	<arg name="workspace_pub" default="/Archimede"/>
+
 	<node name="robot4ws_logiteck_controller" pkg="robot4ws_teleop_joystick" type="robot4ws_teleop_logi_controller_node" output="screen">
 		<rosparam command="load" file="$(find robot4ws_teleop_joystick)/config/params.yaml"/>
-		  <remap from="/cmd_vel" to="/Archimede/cmd_vel"/>
+		  <remap from="/cmd_vel" to="$(arg workspace_pub)/cmd_vel"/>
 	</node>
 
 	<node pkg="joy" type="joy_node" name="logiteck_joystick_node" output="screen">
