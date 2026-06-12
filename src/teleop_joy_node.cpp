@@ -21,6 +21,10 @@ Robot4WSTeleop::Robot4WSTeleop()
     this -> _nh.param(node_name + "/cmd_publish_rate", this -> _cmd_publish_rate, 10.0);
     this -> _nh.param(node_name + "/sound_publish_rate", this -> _sound_publish_rate, 0.2); //Once evenry 5 seconds
     this -> _nh.param(node_name + "/warning_print_rate", this -> _print_warning_rate, 0.2); //Once every 5 seconds
+    this -> _nh.param(node_name + "/scale_yz_relative", this -> _scale_yz_relative, false);
+    this -> _nh.getParam("drive_mode", this -> _current_drive_mode);
+    this -> _check_kinematic_mode_rate = 10.0;
+    this -> _angle_crit_wheels = 0.58751447813558321651;
 
 
     //Initialize button mapping
@@ -46,6 +50,7 @@ Robot4WSTeleop::Robot4WSTeleop()
     this -> _node_initial_time = ros::Time::now();
     this -> _last_joy_time = ros::Time::now();
     this -> _last_mode_changed = ros::Time::now();
+    this -> _last_mode_check_time = ros::Time::now();
 
 
 
@@ -151,6 +156,15 @@ void Robot4WSTeleop::joystickSubscriberCallback(const sensor_msgs::Joy::ConstPtr
         this -> dot_x = this -> _linear_x_vel_scale_factor * joy -> axes[LINEAR_X_AXIS];
         this -> dot_y = this -> _linear_y_vel_scale_factor * joy -> axes[LINEAR_Y_AXIS];
         this -> dot_theta = this -> _angular_z_vel_scale_factor * joy -> axes[ANGULAR_Z_AXIS];
+
+        if (this -> _scale_yz_relative)
+        {
+            if (this -> _current_drive_mode == "parallel_ackermann")
+            {
+                // scale vel_y wrt vel_x: joy=1 -> max value allowed by the steerings (for current vel_x)
+                dot_y = dot_x * std::tan(this -> _angle_crit_wheels) * joy -> axes[LINEAR_Y_AXIS];
+            }
+        }
 
         if (this -> debug)
         {
@@ -313,6 +327,13 @@ void Robot4WSTeleop::run(void)
                 ROS_INFO("PUBLISHING VEL");
             }
 
+        }
+
+        // Check drive mode
+        if ((ros::Time::now().toSec() - this -> _last_mode_check_time.toSec() >= 1/this -> _check_kinematic_mode_rate))
+        {
+            this -> _nh.getParam("drive_mode", this -> _current_drive_mode);
+            // std::cerr << "Current drive mode: [" << this -> _current_drive_mode << "]\n";
         }
 
         /*if ((ros::Time::now().toSec() - _last_sound_cmd_sent_time.toSec() >= 1/this -> _sound_publish_rate) && this -> is_moving)

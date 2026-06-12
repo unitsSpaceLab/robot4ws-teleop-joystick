@@ -15,6 +15,7 @@
 #include <robot4ws_msgs/enable_logiteck_joystick.h>
 #include <vector>
 #include <map>
+#include <cmath>
 
 #define LINEAR_Y_AXIS 0
 #define LINEAR_X_AXIS 1
@@ -76,6 +77,7 @@ class Robot4WSTeleop
         ros::Time _last_cmd_sent_time;
         ros::Time _node_initial_time;
         ros::Time _last_mode_changed;
+        ros::Time _last_mode_check_time;
 
 
         bool is_moving = false;
@@ -95,6 +97,7 @@ class Robot4WSTeleop
         double _cmd_publish_rate;
         double _sound_publish_rate;
         double _print_warning_rate;
+        double _check_kinematic_mode_rate;
 
 
         //Variables
@@ -102,6 +105,9 @@ class Robot4WSTeleop
         double dot_y;
         double dot_theta;
 
+        bool _scale_yz_relative; // true -> y and z commands from joypad are scaled with respect to x velocity, for some drive modes
+        std::string _current_drive_mode;
+        double _angle_crit_wheels; // [rad]
 
         //Buttons Mapping initialization (just for printing purpouse)
         std::map<int, std::string> _button_mapping;
