@@ -31,12 +31,12 @@ Robot4WSTeleop::Robot4WSTeleop() : Node("robot4ws_joy_teleop_transform_node")
     initializeButtonMapping();
 
     // Publishers
-    _joystick_command_publisher = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 1);
-    _mode_change_sound_publisher = this->create_publisher<robot4ws_msgs::msg::Sound>("/sound", 1);
+    _joystick_command_publisher = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 1);
+    _mode_change_sound_publisher = this->create_publisher<robot4ws_msgs::msg::Sound>("sound", 1);
 
     // Subscriber
     _joystick_subscriber = this->create_subscription<sensor_msgs::msg::Joy>(
-        "/joy", 10, std::bind(&Robot4WSTeleop::joystickSubscriberCallback, this, std::placeholders::_1));
+        "joy", 10, std::bind(&Robot4WSTeleop::joystickSubscriberCallback, this, std::placeholders::_1));
 
     // Service client
     _client_mode_change = this->create_client<robot4ws_msgs::srv::KinematicMode>("change_kinematic_mode");
