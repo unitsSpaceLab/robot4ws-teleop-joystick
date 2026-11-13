@@ -39,7 +39,7 @@ Robot4WSTeleop::Robot4WSTeleop() : Node("robot4ws_joy_teleop_transform_node")
         "/joy", 10, std::bind(&Robot4WSTeleop::joystickSubscriberCallback, this, std::placeholders::_1));
 
     // Service client
-    _client_mode_change = this->create_client<robot4ws_msgs::srv::KinematicMode>("kinematic_mode");
+    _client_mode_change = this->create_client<robot4ws_msgs::srv::KinematicMode>("change_kinematic_mode");
 
     // Service server
     _server_service_provider = this->create_service<robot4ws_msgs::srv::EnableLogiteckJoystick>(
@@ -200,15 +200,36 @@ void Robot4WSTeleop::callService(int button, std::string mode)
     resetSpeeds(true);
     _last_mode_changed = this->now();
 
-    auto result = _client_mode_change->async_send_request(request);
-    if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS)
-    {
-        RCLCPP_INFO(this->get_logger(), "Changed Driving mode with button [%d - (%s)]", button, mode.c_str());
-    }
-    else
-    {
-        RCLCPP_ERROR(this->get_logger(), "Failed to change driving mode with button [%d - (%s)]", button, mode.c_str());
-    }
+    _client_mode_change->async_send_request(
+        request,
+        [this, button, mode](rclcpp::Client<robot4ws_msgs::srv::KinematicMode>::SharedFuture future)
+        {
+            try
+            {
+                auto result = future.get();
+
+                RCLCPP_INFO(
+                    this->get_logger(),
+                    "Changed Driving mode with button [%d - (%s)]",
+                    button, mode.c_str());
+            }
+            catch (const std::exception & e)
+            {
+                RCLCPP_ERROR(
+                    this->get_logger(),
+                    "Failed to change driving mode with button [%d - (%s)]: %s",
+                    button, mode.c_str(), e.what());
+            }
+        });
+    // auto result = _client_mode_change->async_send_request(request);
+    // if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS)
+    // {
+    //     RCLCPP_INFO(this->get_logger(), "Changed Driving mode with button [%d - (%s)]", button, mode.c_str());
+    // }
+    // else
+    // {
+    //     RCLCPP_ERROR(this->get_logger(), "Failed to change driving mode with button [%d - (%s)]", button, mode.c_str());
+    // }
 }
 
 void Robot4WSTeleop::run(void)
