@@ -45,11 +45,8 @@ def generate_launch_description():
         executable='joy_node',
         namespace=LaunchConfiguration('ns_joystick'),
         name='logitech_joystick_node',
-        parameters=[{
-            'dev': '/dev/input/js0',
-            'deadzone': 0.01,
-            'use_sim_time': LaunchConfiguration('use_sim_time')
-        }],
+        parameters=[params_file,
+            {'use_sim_time': LaunchConfiguration('use_sim_time')}],
         output='screen'
     )
 
